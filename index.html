@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard do Cliente - Visão Comercial</title>
+
+  <!-- Script de Autenticação / Senha -->
+  <script>
+    (function() {
+      var senhaCorreta = "dados1359";
+      var entrada = prompt("Digite a senha para acessar o Dashboard:");
+      if (entrada !== senhaCorreta) {
+        alert("Senha incorreta!");
+        document.write("<h2 style='color:red; text-align:center; margin-top:50px; font-family:sans-serif;'>Acesso Negado</h2>");
+        window.stop();
+      }
+    })();
+  </script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; color: #000000; }
+    .card-stat { transition: all 0.2s ease-in-out; }
+    .card-stat:hover { transform: translateY(-2px); }
+    .custom-border { border-color: #d8d8c0; }
+    .custom-bg-light { background-color: #f0f0d8; }
+    .custom-btn { background-color: #1693a5; color: #ffffff; }
+    .custom-btn:hover { background-color: #0f6875; }
+    .custom-teal-border { border-left-color: #1693a5; }
+    .custom-dark-border { border-left-color: #000000; }
+  </style>
+</head>
+<body class="p-4 md:p-6">
+
+  <div class="max-w-[1700px] mx-auto space-y-6">
+    
+    <!-- Cabeçalho -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">📊</span>
+          <div>
+            <h1 class="text-2xl font-bold text-black">Dashboard do Cliente</h1>
+            <p class="text-xs md:text-sm text-gray-600">Acompanhamento de Valor de Mercadoria, Volume (LT) e Variações por Filial, Linha, Família e Item</p>
+            <div class="flex items-center gap-3 mt-1">
+              <p id="lastUpdateText" class="text-xs text-[#1693a5] font-semibold">⏳ Aguarde, carregando dados... ⏳</p>
+              <button id="btnRetryFetch" onclick="loadFromGitHub()" class="hidden text-xs bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded text-gray-700 font-medium">🔄 Tentar Novamente</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Fallback de Upload Manual -->
+      <div id="manualUploadContainer" class="hidden flex items-center gap-2">
+        <label class="text-xs text-gray-500 font-semibold">Se preferir, selecione o arquivo local:</label>
+        <input type="file" id="fileInput" accept=".xlsx, .xls" class="text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#1693a5] file:text-white hover:file:bg-[#0f6875] cursor-pointer"/>
+      </div>
+    </div>
+
+    <!-- Painel de Filtros Avançado -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-gray-500">Filtros de Pesquisa</h2>
+        <button id="btnResetFilters" class="text-xs font-semibold transition flex items-center gap-1 hover:underline" style="color: #1693a5;">
+          🔄 Limpar Todos os Filtros
+        </button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">🔍 Pesquisar Item</label>
+          <input type="text" id="filterItem" placeholder="Ex: 601300061 ou Massa..." class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Cliente (Grupo)</label>
+          <select id="filterGrupo" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todos os Grupos</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Filial / Planta</label>
+          <select id="filterFilial" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todas as Filiais</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Líquida / Pó</label>
+          <select id="filterLiquidaPo" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Linha Comercial</label>
+          <select id="filterLinha" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todas as Linhas</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Família Comercial</label>
+          <select id="filterFamilia" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todas as Famílias</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Cliente</label>
+          <select id="filterCliente" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todos os Clientes</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Mês</label>
+          <select id="filterMes" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todos os Meses</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs Principais (Apenas Mercadoria e Volume) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border border-l-4 custom-teal-border card-stat">
+        <span class="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Valor de Mercadoria 2026</span>
+        <div class="flex items-baseline justify-between mt-1">
+          <p id="kpiMerc2026" class="text-2xl font-bold text-black">R$ 0,00</p>
+          <span id="kpiVarMerc" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">0%</span>
+        </div>
+        <p class="text-[11px] text-gray-500 mt-2">2025: <span id="kpiMerc2025" class="font-medium text-black">R$ 0,00</span></p>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border border-l-4 custom-dark-border card-stat">
+        <span class="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Volume Total 2026 (LT)</span>
+        <div class="flex items-baseline justify-between mt-1">
+          <p id="kpiVol2026" class="text-2xl font-bold text-black">0 LT</p>
+          <span id="kpiVarVol" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">0%</span>
+        </div>
+        <p class="text-[11px] text-gray-500 mt-2">2025: <span id="kpiVol2025" class="font-medium text-black">0 LT</span></p>
+      </div>
+    </div>
+
+    <!-- Gráficos Comerciais -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Tinta Líquida vs Tinta Pó (2026)</h2>
+        <div class="h-60">
+          <canvas id="chartTecnologia"></canvas>
+        </div>
+      </div>
+      
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Valor de Mercadoria por Filial</h2>
+        <div class="h-60">
+          <canvas id="chartFilial"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Valor de Mercadoria por Linha</h2>
+        <div class="h-60">
+          <canvas id="chartLinhaComercial"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Itens e Evolução Mensal -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Top 10 Itens por Valor de Mercadoria (2025 vs 2026)</h2>
+        <div class="h-64">
+          <canvas id="chartTopItens"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Evolução Mensal (Mercadoria 2025 vs 2026)</h2>
+        <div class="h-64">
+          <canvas id="chartEvolucao"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO GRUPO ECONÔMICO -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-5 bg-white p-5 rounded-2xl shadow-sm border custom-border flex flex-col justify-between">
+        <div>
+          <h2 class="text-base font-bold text-black">📊 Valor de Mercadoria por Cliente - Grupo</h2>
+          <p class="text-xs text-gray-500 mb-4">Comparativo de valor de mercadoria (2025 vs 2026)</p>
+        </div>
+        <div class="h-80">
+          <canvas id="chartGrupoEconomico"></canvas>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border custom-border overflow-hidden flex flex-col justify-between">
+        <div>
+          <div class="p-5 border-b custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h2 class="text-base font-bold text-black">🏢 Ranking por Cliente - Grupo (2026)</h2>
+              <p class="text-xs text-gray-500">Desempenho consolidado de mercadoria agregando redes e filiais</p>
+            </div>
+            <div id="gruposCount" class="text-xs font-semibold text-black custom-bg-light px-3 py-1.5 rounded-lg border custom-border">
+              0 grupos
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+                <tr>
+                  <th class="py-3 px-3">Cliente - Grupo</th>
+                  <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+                  <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+                  <th class="py-3 px-3 text-right">% Var Merc.</th>
+                  <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+                  <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+                  <th class="py-3 px-3 text-right">% Var Vol</th>
+                </tr>
+              </thead>
+              <tbody id="tableBodyGrupos" class="divide-y custom-border text-black">
+                <tr>
+                  <td colspan="7" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA: RANKING POR CLIENTE INDIVIDUAL -->
+    <div class="bg-white rounded-2xl shadow-sm border custom-border overflow-hidden">
+      <div class="p-5 border-b custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-base font-bold text-black">🏪 Ranking por Cliente Individual (2026)</h2>
+          <p class="text-xs text-gray-500">Desempenho detalhado ordenado pelo valor de mercadoria</p>
+        </div>
+        <div id="clientesCount" class="text-xs font-semibold text-black custom-bg-light px-3 py-1.5 rounded-lg border custom-border">
+          0 clientes
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+            <tr>
+              <th class="py-3 px-3">Cliente</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+              <th class="py-3 px-3 text-right">% Var Merc.</th>
+              <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+              <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+              <th class="py-3 px-3 text-right">% Var Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyClientes" class="divide-y custom-border text-black">
+            <tr>
+              <td colspan="7" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABELA 1: ITENS POR VALOR DE MERCADORIA -->
+    <div class="bg-white rounded-2xl shadow-sm border custom-border overflow-hidden">
+      <div class="p-5 border-b custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-base font-bold text-black">🏆 Itens por Valor de Mercadoria (2026)</h2>
+          <p class="text-xs text-gray-500">Principais itens consolidados ordenados pelo maior valor de mercadoria</p>
+        </div>
+        <div id="topItensCount" class="text-xs font-semibold text-black custom-bg-light px-3 py-1.5 rounded-lg border custom-border">
+          0 itens
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+            <tr>
+              <th class="py-3 px-3">Filial</th>
+              <th class="py-3 px-3">Tipo</th>
+              <th class="py-3 px-3">Linha / Família</th>
+              <th class="py-3 px-3">Item (Cód. - Descrição)</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+              <th class="py-3 px-3 text-right">% Var Merc.</th>
+              <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+              <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+              <th class="py-3 px-3 text-right">% Var Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyTopItens" class="divide-y custom-border text-black">
+            <tr>
+              <td colspan="10" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABELA 2: DESEMPENHO DAS LINHAS COMERCIAIS -->
+    <div class="bg-white rounded-2xl shadow-sm border custom-border overflow-hidden">
+      <div class="p-5 border-b custom-border">
+        <h2 class="text-base font-bold text-black">📊 Desempenho por Linha Comercial</h2>
+        <p class="text-xs text-gray-500">Consolidado de valor de mercadoria e volume por linha comercial</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+            <tr>
+              <th class="py-3 px-3">Linha Comercial</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+              <th class="py-3 px-3 text-right">% Var Merc.</th>
+              <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+              <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+              <th class="py-3 px-3 text-right">% Var Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyLinhas" class="divide-y custom-border text-black">
+            <tr>
+              <td colspan="7" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABELA 3: TOP 10 FAMÍLIAS COMERCIAIS -->
+    <div class="bg-white rounded-2xl shadow-sm border custom-border overflow-hidden">
+      <div class="p-5 border-b custom-border">
+        <h2 class="text-base font-bold text-black">⭐ Top 10 Famílias Comerciais</h2>
+        <p class="text-xs text-gray-500">As 10 maiores famílias em valor de mercadoria em 2026</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+            <tr>
+              <th class="py-3 px-3">Família Comercial</th>
+              <th class="py-3 px-3">Linha Pertencente</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+              <th class="py-3 px-3 text-right">% Var Merc.</th>
+              <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+              <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+              <th class="py-3 px-3 text-right">% Var Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyFamilias" class="divide-y custom-border text-black">
+            <tr>
+              <td colspan="8" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let rawData = [];
+    let chartInstances = {};
+    const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/luanproject/dashboardcomercial/main/dados.xls';
+
+    function normalizeStr(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    }
+
+    function getVal(row, keys, isNum = true) {
+      const normalizedRow = {};
+      Object.keys(row).forEach(k => {
+        normalizedRow[normalizeStr(k)] = row[k];
+      });
+
+      for (let key of keys) {
+        let normKey = normalizeStr(key);
+        if (normalizedRow[normKey] !== undefined && normalizedRow[normKey] !== null && normalizedRow[normKey] !== '') {
+          if (!isNum) return String(normalizedRow[normKey]).trim();
+          let val = normalizedRow[normKey];
+          
+          if (typeof val === 'number') {
+            return isNaN(val) ? 0 : val;
+          }
+
+          if (typeof val === 'string') {
+            let cleaned = val.replace('R$', '')
+                             .replace('%', '')
+                             .replace(/dias?/gi, '')
+                             .replace(/d/gi, '')
+                             .trim();
+            
+            if (cleaned.includes(',') && !cleaned.includes('.')) {
+              cleaned = cleaned.replace(',', '.');
+            } else if (cleaned.includes('.') && cleaned.includes(',')) {
+              cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+            }
+            
+            let n = parseFloat(cleaned);
+            if (!isNaN(n)) return n;
+
+            let match = val.match(/\d+(\.\d+)?/);
+            if (match) {
+              let parsed = parseFloat(match[0]);
+              if (!isNaN(parsed)) return parsed;
+            }
+          }
+          return 0;
+        }
+      }
+      return isNum ? 0 : '';
+    }
+
+    function getGrupoEconomico(d) {
+      let grp = getVal(d, ['Grupo Econômico', 'Grupo Economico', 'Grupo Econômico / Rede', 'Grupo', 'Rede'], false);
+      if (!grp) {
+        let nome = getVal(d, ['Cliente - Matriz Razão', 'Nome do cliente', 'NomeCliente', 'Cliente', 'Cliente - Nome Abrev - Pedido'], false);
+        if (nome) {
+          grp = nome.replace(/^\d+\s*[-_]\s*/, '').trim();
+        } else {
+          grp = 'OUTROS / SEM GRUPO';
+        }
+      }
+
+      const aliasMap = {
+        'COMERCIAL R': 'COMERCIAL ROFE',
+        'DIST ADAUTO': 'DISTAC DISTRIBUIDORA',
+        'CONDOR ATAC': 'CONDOR ATACADISTA',
+        'RAMACON DISTRIBUIDORA DE MATERIAL PARA CONSTRUCAO EIRELI': 'RAMACON DISTRIBUIDORA',
+        'DISTRIBUIDORA MAIA DE MATERIAL DE CONSTRUCAO LTDA': 'NILO MAIA'
+      };
+
+      const grpTrim = grp.trim();
+      if (aliasMap[grpTrim]) {
+        return aliasMap[grpTrim];
+      }
+
+      for (let key in aliasMap) {
+        if (key.toLowerCase() === grpTrim.toLowerCase()) {
+          return aliasMap[key];
+        }
+      }
+
+      return grp;
+    }
+
+    // Chaves específicas para Valor de Mercadoria e Volume
+    const mercKeys2026 = ['Vl Mercadoria Aberto 2026', 'R$ Mercadoria 2026', 'Vl Mercadoria Aberto', 'Vl Mercadoria', 'Valor Mercadoria', 'Valor de Mercadoria', 'R$ Mercadoria'];
+    const mercKeys2025 =
