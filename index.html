@@ -106,7 +106,7 @@
           </select>
         </div>
         <div>
-          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Cliente</label>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Cliente (Código / Nome)</label>
           <select id="filterCliente" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
             <option value="">Todos os Clientes</option>
           </select>
@@ -234,7 +234,7 @@
       <div class="p-5 border-b custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 class="text-base font-bold text-black">🏪 Ranking por Cliente Individual (2026)</h2>
-          <p class="text-xs text-gray-500">Desempenho detalhado ordenado pelo valor de mercadoria</p>
+          <p class="text-xs text-gray-500">Desempenho detalhado por código de cliente individual</p>
         </div>
         <div id="clientesCount" class="text-xs font-semibold text-black custom-bg-light px-3 py-1.5 rounded-lg border custom-border">
           0 clientes
@@ -244,7 +244,7 @@
         <table class="w-full text-left text-xs">
           <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
             <tr>
-              <th class="py-3 px-3">Cliente</th>
+              <th class="py-3 px-3">Cód. / Cliente Individual</th>
               <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
               <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
               <th class="py-3 px-3 text-right">% Var Merc.</th>
@@ -361,7 +361,7 @@
     let rawData = [];
     let chartInstances = {};
     
-    // CAMINHO RELATIVO DO ARQUIVO DADOS.XLS DENTRO DO SEU REPOSITÓRIO NO GITHUB
+    // CAMINHO RELATIVO DO ARQUIVO DADOS.XLS DENTRO DO REPOSITÓRIO
     const GITHUB_RAW_URL = './dados.xls';
 
     function normalizeStr(str) {
@@ -413,10 +413,21 @@
       return isNum ? 0 : '';
     }
 
+    function getClienteIndividual(d) {
+      let cod = getVal(d, ['Código Cliente', 'Cod Cliente', 'Código', 'Cod. Cliente', 'Cliente Código', 'CodCliente', 'CodCli'], false);
+      let nome = getVal(d, ['Cliente - Matriz Razão', 'Nome do cliente', 'NomeCliente', 'Cliente', 'Razão Social', 'Razao Social'], false);
+
+      if (cod && nome) {
+        if (nome.startsWith(cod)) return nome;
+        return `${cod} - ${nome}`;
+      }
+      return nome || cod || 'CLIENTE NÃO IDENTIFICADO';
+    }
+
     function getGrupoEconomico(d) {
       let grp = getVal(d, ['Grupo Econômico', 'Grupo Economico', 'Grupo Econômico / Rede', 'Grupo', 'Rede'], false);
       if (!grp) {
-        let nome = getVal(d, ['Cliente - Matriz Razão', 'Nome do cliente', 'NomeCliente', 'Cliente', 'Cliente - Nome Abrev - Pedido'], false);
+        let nome = getVal(d, ['Cliente - Matriz Razão', 'Nome do cliente', 'NomeCliente', 'Cliente'], false);
         if (nome) {
           grp = nome.replace(/^\d+\s*[-_]\s*/, '').trim();
         } else {
@@ -466,7 +477,6 @@
       return `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">${val.toFixed(1).replace('.', ',')}%</span>`;
     }
 
-    // Carregamento do arquivo local via fetch
     window.addEventListener('DOMContentLoaded', () => {
       loadFromGitHub();
       setupEventListeners();
@@ -526,7 +536,7 @@
       fillSelect('filterLiquidaPo', getUniqueSorted(d => getVal(d, ['Líquida/Pó', 'Liquida/Po', 'Liquida / Po', 'Tipo'], false)), 'Todas');
       fillSelect('filterLinha', getUniqueSorted(d => getVal(d, ['Linha Comercial', 'Linha'], false)), 'Todas as Linhas');
       fillSelect('filterFamilia', getUniqueSorted(d => getVal(d, ['Família Comercial', 'Familia Comercial', 'Familia'], false)), 'Todas as Famílias');
-      fillSelect('filterCliente', getUniqueSorted(d => getVal(d, ['Cliente - Matriz Razão', 'Cliente', 'Nome do cliente'], false)), 'Todos os Clientes');
+      fillSelect('filterCliente', getUniqueSorted(d => getClienteIndividual(d)), 'Todos os Clientes');
       fillSelect('filterMes', getUniqueSorted(d => getVal(d, ['Mês', 'Mes'], false)), 'Todos os Meses');
     }
 
@@ -575,7 +585,7 @@
         if (liqPo && getVal(d, ['Líquida/Pó', 'Liquida/Po', 'Liquida / Po', 'Tipo'], false) !== liqPo) return false;
         if (linha && getVal(d, ['Linha Comercial', 'Linha'], false) !== linha) return false;
         if (familia && getVal(d, ['Família Comercial', 'Familia Comercial', 'Familia'], false) !== familia) return false;
-        if (cliente && getVal(d, ['Cliente - Matriz Razão', 'Cliente', 'Nome do cliente'], false) !== cliente) return false;
+        if (cliente && getClienteIndividual(d) !== cliente) return false;
         if (mes && getVal(d, ['Mês', 'Mes'], false) !== mes) return false;
 
         return true;
@@ -585,7 +595,6 @@
     function updateDashboard() {
       const data = getFilteredData();
 
-      // Cálculo Totais KPIs
       let totalMerc2026 = 0, totalMerc2025 = 0;
       let totalVol2026 = 0, totalVol2025 = 0;
 
@@ -617,7 +626,6 @@
     }
 
     function renderCharts(data) {
-      // 1. Tinta Líquida vs Pó
       let techMap = {};
       data.forEach(d => {
         let tipo = getVal(d, ['Líquida/Pó', 'Liquida/Po', 'Tipo'], false) || 'Não Informado';
@@ -625,7 +633,6 @@
       });
       createDoughnutChart('chartTecnologia', Object.keys(techMap), Object.values(techMap));
 
-      // 2. Filial
       let filialMap = {};
       data.forEach(d => {
         let f = getVal(d, ['Grupo Empresa', 'Filial', 'Planta'], false) || 'Outros';
@@ -633,7 +640,6 @@
       });
       createBarChart('chartFilial', Object.keys(filialMap), Object.values(filialMap), '#1693a5');
 
-      // 3. Linha Comercial
       let linhaMap = {};
       data.forEach(d => {
         let l = getVal(d, ['Linha Comercial', 'Linha'], false) || 'Outros';
@@ -641,7 +647,6 @@
       });
       createBarChart('chartLinhaComercial', Object.keys(linhaMap), Object.values(linhaMap), '#334155');
 
-      // 4. Top 10 Itens
       let itemMap = {};
       data.forEach(d => {
         let item = getVal(d, ['Item', 'Descrição'], false) || 'Sem Nome';
@@ -652,7 +657,6 @@
       let sortedItens = Object.keys(itemMap).sort((a, b) => itemMap[b].m26 - itemMap[a].m26).slice(0, 10);
       createGroupedBarChart('chartTopItens', sortedItens, sortedItens.map(i => itemMap[i].m25), sortedItens.map(i => itemMap[i].m26));
 
-      // 5. Evolução Mensal
       let mesMap = {};
       data.forEach(d => {
         let m = getVal(d, ['Mês', 'Mes'], false) || 'Outros';
@@ -664,7 +668,6 @@
       let mesKeys = Object.keys(mesMap).sort((a, b) => mesOrdem.indexOf(a.toLowerCase().slice(0,3)) - mesOrdem.indexOf(b.toLowerCase().slice(0,3)));
       createLineChart('chartEvolucao', mesKeys, mesKeys.map(m => mesMap[m].m25), mesKeys.map(m => mesMap[m].m26));
 
-      // 6. Grupo Econômico
       let grupoMap = {};
       data.forEach(d => {
         let g = getGrupoEconomico(d);
@@ -761,10 +764,10 @@
       }).join('');
       document.getElementById('tableBodyGrupos').innerHTML = htmlGrupos || '<tr><td colspan="7" class="py-4 text-center text-gray-400">Nenhum dado encontrado</td></tr>';
 
-      // 2. Tabela Clientes Indivíduo
+      // 2. Tabela Clientes Indivíduo (Agrupado por Código + Razão Social)
       let clientes = {};
       data.forEach(d => {
-        let c = getVal(d, ['Cliente - Matriz Razão', 'Cliente', 'Nome do cliente'], false) || 'Não Identificado';
+        let c = getClienteIndividual(d);
         if (!clientes[c]) clientes[c] = { m25: 0, m26: 0, v25: 0, v26: 0 };
         clientes[c].m25 += getVal(d, mercKeys2025);
         clientes[c].m26 += getVal(d, mercKeys2026);
@@ -775,7 +778,7 @@
       let sortedClientes = Object.keys(clientes).sort((a, b) => clientes[b].m26 - clientes[a].m26);
       document.getElementById('clientesCount').textContent = `${sortedClientes.length} clientes`;
 
-      let htmlClientes = sortedClientes.slice(0, 50).map(c => {
+      let htmlClientes = sortedClientes.map(c => {
         let item = clientes[c];
         let varM = item.m25 > 0 ? ((item.m26 - item.m25) / item.m25) * 100 : 0;
         let varV = item.v25 > 0 ? ((item.v26 - item.v25) / item.v25) * 100 : 0;
