@@ -3,296 +3,544 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard de Vendas</title>
-  <!-- Biblioteca para leitura de arquivos Excel (XLSX) -->
+  <title>Dashboard do Cliente - Visão Comercial</title>
+
+  <!-- Script de Autenticação / Senha -->
+  <script>
+    (function() {
+      var senhaCorreta = "dados1359";
+      var entrada = prompt("Digite a senha para acessar o Dashboard:");
+      if (entrada !== senhaCorreta) {
+        alert("Senha incorreta!");
+        document.write("<h2 style='color:red; text-align:center; margin-top:50px; font-family:sans-serif;'>Acesso Negado</h2>");
+        window.stop();
+      }
+    })();
+  </script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f4f6f9;
-      margin: 0;
-      padding: 20px;
-      color: #333;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .card {
-      background: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-      padding: 20px;
-      margin-bottom: 25px;
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 10px;
-    }
-    .card-title {
-      font-size: 1.25rem;
-      font-weight: bold;
-      color: #1a252f;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .badge {
-      background-color: #f0f4f8;
-      color: #4a5568;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-    .subtitle {
-      font-size: 0.85rem;
-      color: #718096;
-      margin-top: -10px;
-      margin-bottom: 15px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-    th {
-      background-color: #f8fafc;
-      color: #475569;
-      text-align: left;
-      padding: 12px 10px;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 2px solid #e2e8f0;
-    }
-    td {
-      padding: 12px 10px;
-      border-bottom: 1px solid #f1f5f9;
-    }
-    tr:hover {
-      background-color: #f8fafc;
-    }
-    .text-right {
-      text-align: right;
-    }
-    .tag-pos {
-      background-color: #d1fae5;
-      color: #065f46;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 0.8rem;
-    }
-    .tag-neg {
-      background-color: #ffe4e6;
-      color: #9f1239;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 0.8rem;
-    }
-    input[type="file"] {
-      margin-bottom: 20px;
-      padding: 10px;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; color: #000000; }
+    .card-stat { transition: all 0.2s ease-in-out; }
+    .card-stat:hover { transform: translateY(-2px); }
+    .custom-border { border-color: #d8d8c0; }
+    .custom-bg-light { background-color: #f0f0d8; }
+    .custom-btn { background-color: #1693a5; color: #ffffff; }
+    .custom-btn:hover { background-color: #0f6875; }
+    .custom-teal-border { border-left-color: #1693a5; }
+    .custom-dark-border { border-left-color: #000000; }
   </style>
 </head>
-<body>
+<body class="p-4 md:p-6">
 
-<div class="container">
-  <h2>Painel de Análise Comercial</h2>
-  
-  <!-- Upload do Arquivo -->
-  <div class="card">
-    <label for="fileInput"><strong>Selecione o arquivo Excel (.xlsx):</strong></label><br><br>
-    <input type="file" id="fileInput" accept=".xlsx, .xls" />
-  </div>
-
-  <!-- Tabela de Ranking por Cliente Individual -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">
-        <span>🏪</span> Ranking por Cliente Individual (2026)
-      </div>
-      <div class="badge" id="totalClientesInd">0 clientes</div>
-    </div>
-    <div class="subtitle">Desempenho detalhado por código de cliente individual</div>
+  <div class="max-w-[1700px] mx-auto space-y-6">
     
-    <table>
-      <thead>
-        <tr>
-          <th>CÓD. / CLIENTE INDIVIDUAL</th>
-          <th class="text-right">VL. MERC. 2025</th>
-          <th class="text-right">VL. MERC. 2026</th>
-          <th class="text-right">% VAR MERC.</th>
-          <th class="text-right">VOL. 2025 (LT)</th>
-          <th class="text-right">VOL. 2026 (LT)</th>
-          <th class="text-right">% VAR VOL</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyClienteIndividual">
-        <tr>
-          <td colspan="7" style="text-align: center; color: #999;">Aguardando envio do arquivo Excel...</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- Cabeçalho -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">📊</span>
+          <div>
+            <h1 class="text-2xl font-bold text-black">Dashboard do Cliente</h1>
+            <p class="text-xs md:text-sm text-gray-600">Acompanhamento de Valor de Mercadoria, Volume (LT) e Variações por Filial, Linha, Família e Item</p>
+            <div class="flex items-center gap-3 mt-1">
+              <p id="lastUpdateText" class="text-xs text-[#1693a5] font-semibold">⏳ Aguarde, carregando dados... ⏳</p>
+              <button id="btnRetryFetch" onclick="loadFromGitHub()" class="hidden text-xs bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded text-gray-700 font-medium">🔄 Tentar Novamente</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Fallback de Upload Manual -->
+      <div id="manualUploadContainer" class="hidden flex items-center gap-2">
+        <label class="text-xs text-gray-500 font-semibold">Se preferir, selecione o arquivo local:</label>
+        <input type="file" id="fileInput" accept=".xlsx, .xls" class="text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#1693a5] file:text-white hover:file:bg-[#0f6875] cursor-pointer"/>
+      </div>
+    </div>
+
+    <!-- Painel de Filtros Avançado -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-gray-500">Filtros de Pesquisa</h2>
+        <button id="btnResetFilters" class="text-xs font-semibold transition flex items-center gap-1 hover:underline" style="color: #1693a5;">
+          🔄 Limpar Todos os Filtros
+        </button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">🔍 Pesquisar Item</label>
+          <input type="text" id="filterItem" placeholder="Ex: 601300061 ou Massa..." class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Cliente (Grupo)</label>
+          <select id="filterGrupo" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todos os Grupos</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Filial / Planta</label>
+          <select id="filterFilial" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todas as Filiais</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Líquida / Pó</label>
+          <select id="filterLiquidaPo" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Linha Comercial</label>
+          <select id="filterLinha" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todas as Linhas</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Família Comercial</label>
+          <select id="filterFamilia" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todas as Famílias</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Cliente (Código / Nome)</label>
+          <select id="filterCliente" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todos os Clientes</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Mês</label>
+          <select id="filterMes" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
+            <option value="">Todos os Meses</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs Principais -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border border-l-4 custom-teal-border card-stat">
+        <span class="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Valor de Mercadoria 2026</span>
+        <div class="flex items-baseline justify-between mt-1">
+          <p id="kpiMerc2026" class="text-2xl font-bold text-black">R$ 0,00</p>
+          <span id="kpiVarMerc" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">0%</span>
+        </div>
+        <p class="text-[11px] text-gray-500 mt-2">2025: <span id="kpiMerc2025" class="font-medium text-black">R$ 0,00</span></p>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border border-l-4 custom-dark-border card-stat">
+        <span class="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Volume Total 2026 (LT)</span>
+        <div class="flex items-baseline justify-between mt-1">
+          <p id="kpiVol2026" class="text-2xl font-bold text-black">0 LT</p>
+          <span id="kpiVarVol" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">0%</span>
+        </div>
+        <p class="text-[11px] text-gray-500 mt-2">2025: <span id="kpiVol2025" class="font-medium text-black">0 LT</span></p>
+      </div>
+    </div>
+
+    <!-- Gráficos Comerciais -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Tinta Líquida vs Tinta Pó (2026)</h2>
+        <div class="h-60">
+          <canvas id="chartTecnologia"></canvas>
+        </div>
+      </div>
+      
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Valor de Mercadoria por Filial</h2>
+        <div class="h-60">
+          <canvas id="chartFilial"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Valor de Mercadoria por Linha</h2>
+        <div class="h-60">
+          <canvas id="chartLinhaComercial"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Itens e Evolução Mensal -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Top 10 Itens por Valor de Mercadoria (2025 vs 2026)</h2>
+        <div class="h-64">
+          <canvas id="chartTopItens"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border">
+        <h2 class="text-sm font-bold text-black mb-3">Evolução Mensal (Mercadoria 2025 vs 2026)</h2>
+        <div class="h-64">
+          <canvas id="chartEvolucao"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO GRUPO ECONÔMICO -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-5 bg-white p-5 rounded-2xl shadow-sm border custom-border flex flex-col justify-between">
+        <div>
+          <h2 class="text-base font-bold text-black">📊 Valor de Mercadoria por Cliente - Grupo</h2>
+          <p class="text-xs text-gray-500 mb-4">Comparativo de valor de mercadoria (2025 vs 2026)</p>
+        </div>
+        <div class="h-80">
+          <canvas id="chartGrupoEconomico"></canvas>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border custom-border overflow-hidden flex flex-col justify-between">
+        <div>
+          <div class="p-5 border-b custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h2 class="text-base font-bold text-black">🏢 Ranking por Cliente - Grupo (2026)</h2>
+              <p class="text-xs text-gray-500">Desempenho consolidado de mercadoria agregando redes e filiais</p>
+            </div>
+            <div id="gruposCount" class="text-xs font-semibold text-black custom-bg-light px-3 py-1.5 rounded-lg border custom-border">
+              0 grupos
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+                <tr>
+                  <th class="py-3 px-3">Cliente - Grupo</th>
+                  <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+                  <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+                  <th class="py-3 px-3 text-right">% Var Merc.</th>
+                  <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+                  <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+                  <th class="py-3 px-3 text-right">% Var Vol</th>
+                </tr>
+              </thead>
+              <tbody id="tableBodyGrupos" class="divide-y custom-border text-black">
+                <tr>
+                  <td colspan="7" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA: RANKING POR CLIENTE INDIVIDUAL -->
+    <div class="bg-white rounded-2xl shadow-sm border custom-border overflow-hidden">
+      <div class="p-5 border-b custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-base font-bold text-black">🏪 Ranking por Cliente Individual (2026)</h2>
+          <p class="text-xs text-gray-500">Desempenho detalhado por código de cliente individual</p>
+        </div>
+        <div id="clientesCount" class="text-xs font-semibold text-black custom-bg-light px-3 py-1.5 rounded-lg border custom-border">
+          0 clientes
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+            <tr>
+              <th class="py-3 px-3">Cód. / Cliente Individual</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+              <th class="py-3 px-3 text-right">% Var Merc.</th>
+              <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+              <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+              <th class="py-3 px-3 text-right">% Var Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyClientes" class="divide-y custom-border text-black">
+            <tr>
+              <td colspan="7" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABELA 1: ITENS POR VALOR DE MERCADORIA -->
+    <div class="bg-white rounded-2xl shadow-sm border custom-border overflow-hidden">
+      <div class="p-5 border-b custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-base font-bold text-black">🏆 Itens por Valor de Mercadoria (2026)</h2>
+          <p class="text-xs text-gray-500">Principais itens consolidados ordenados pelo maior valor de mercadoria</p>
+        </div>
+        <div id="topItensCount" class="text-xs font-semibold text-black custom-bg-light px-3 py-1.5 rounded-lg border custom-border">
+          0 itens
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+            <tr>
+              <th class="py-3 px-3">Filial</th>
+              <th class="py-3 px-3">Tipo</th>
+              <th class="py-3 px-3">Linha / Família</th>
+              <th class="py-3 px-3">Item (Cód. - Descrição)</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+              <th class="py-3 px-3 text-right">% Var Merc.</th>
+              <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+              <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+              <th class="py-3 px-3 text-right">% Var Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyTopItens" class="divide-y custom-border text-black">
+            <tr>
+              <td colspan="10" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABELA 2: DESEMPENHO DAS LINHAS COMERCIAIS -->
+    <div class="bg-white rounded-2xl shadow-sm border custom-border overflow-hidden">
+      <div class="p-5 border-b custom-border">
+        <h2 class="text-base font-bold text-black">📊 Desempenho por Linha Comercial</h2>
+        <p class="text-xs text-gray-500">Consolidado de valor de mercadoria e volume por linha comercial</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+            <tr>
+              <th class="py-3 px-3">Linha Comercial</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+              <th class="py-3 px-3 text-right">% Var Merc.</th>
+              <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+              <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+              <th class="py-3 px-3 text-right">% Var Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyLinhas" class="divide-y custom-border text-black">
+            <tr>
+              <td colspan="7" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABELA 3: TOP 10 FAMÍLIAS COMERCIAIS -->
+    <div class="bg-white rounded-2xl shadow-sm border custom-border overflow-hidden">
+      <div class="p-5 border-b custom-border">
+        <h2 class="text-base font-bold text-black">⭐ Top 10 Famílias Comerciais</h2>
+        <p class="text-xs text-gray-500">As 10 maiores famílias em valor de mercadoria em 2026</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
+            <tr>
+              <th class="py-3 px-3">Família Comercial</th>
+              <th class="py-3 px-3">Linha Pertencente</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
+              <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
+              <th class="py-3 px-3 text-right">% Var Merc.</th>
+              <th class="py-3 px-3 text-right">Vol. 2025 (LT)</th>
+              <th class="py-3 px-3 text-right">Vol. 2026 (LT)</th>
+              <th class="py-3 px-3 text-right">% Var Vol</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyFamilias" class="divide-y custom-border text-black">
+            <tr>
+              <td colspan="8" class="py-8 text-center text-gray-400">Nenhum dado carregado ainda.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
-</div>
 
-<script>
-  // ============================================================================
-  // 1. FUNÇÕES AUXILIARES DE BUSCA E TRATAMENTO DE DADOS
-  // ============================================================================
+  <script>
+    let rawData = [];
+    let chartInstances = {};
+    
+    // CAMINHO RELATIVO DO ARQUIVO DADOS.XLS DENTRO DO REPOSITÓRIO
+    const GITHUB_RAW_URL = './dados.xls';
 
-  // Procura um valor na linha testando vários nomes de colunas possíveis
-  function getVal(d, colNames, defaultValue = '') {
-    if (!d) return defaultValue;
-    for (let col of colNames) {
-      if (d[col] !== undefined && d[col] !== null && String(d[col]).trim() !== '') {
-        return d[col];
-      }
-    }
-    return defaultValue;
-  }
-
-  // Identifica o Cliente Individual combinando CÓDIGO + NOME
-  function getClienteIndividual(d) {
-    // Busca o código do cliente (incluindo 'Cliente - Código')
-    let cod = getVal(d, [
-      'Cliente - Código', 'Cliente - Codigo', 'Código Cliente', 'Codigo Cliente', 
-      'Cod. Cliente', 'Cod Cliente', 'Código', 'Codigo', 'Cod', 'CD_CLIENTE', 'COD_CLIENTE'
-    ], false);
-
-    // Busca a Razão Social / Nome do cliente
-    let nome = getVal(d, [
-      'Cliente - Matriz Razão', 'Cliente', 'Razão Social', 'Razao Social', 
-      'Nome Cliente', 'NM_CLIENTE'
-    ], false);
-
-    cod = cod ? String(cod).trim() : '';
-    nome = nome ? String(nome).trim() : '';
-
-    if (cod && nome) {
-      if (nome.startsWith(cod)) return nome;
-      return `${cod} - ${nome}`; // Exemplo: "67927 - CONDOR ATAC"
+    function normalizeStr(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
     }
 
-    return cod || nome || 'CLIENTE NÃO IDENTIFICADO';
-  }
+    function getVal(row, keys, isNum = true) {
+      const normalizedRow = {};
+      Object.keys(row).forEach(k => {
+        normalizedRow[normalizeStr(k)] = row[k];
+      });
 
-  // Formatadores de Moeda e Números
-  function formatMoney(val) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
-  }
+      for (let key of keys) {
+        let normKey = normalizeStr(key);
+        if (normalizedRow[normKey] !== undefined && normalizedRow[normKey] !== null && normalizedRow[normKey] !== '') {
+          if (!isNum) return String(normalizedRow[normKey]).trim();
+          let val = normalizedRow[normKey];
+          
+          if (typeof val === 'number') {
+            return isNaN(val) ? 0 : val;
+          }
 
-  function formatNumber(val) {
-    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(val || 0);
-  }
+          if (typeof val === 'string') {
+            let cleaned = val.replace('R$', '')
+                             .replace('%', '')
+                             .replace(/dias?/gi, '')
+                             .replace(/d/gi, '')
+                             .trim();
+            
+            if (cleaned.includes(',') && !cleaned.includes('.')) {
+              cleaned = cleaned.replace(',', '.');
+            } else if (cleaned.includes('.') && cleaned.includes(',')) {
+              cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+            }
+            
+            let n = parseFloat(cleaned);
+            if (!isNaN(n)) return n;
 
-  function formatPercent(val) {
-    const formatted = (val || 0).toFixed(1).replace('.', ',') + '%';
-    if (val > 0) return `<span class="tag-pos">+${formatted}</span>`;
-    if (val < 0) return `<span class="tag-neg">${formatted}</span>`;
-    return `<span>${formatted}</span>`;
-  }
+            let match = val.match(/\d+(\.\d+)?/);
+            if (match) {
+              let parsed = parseFloat(match[0]);
+              if (!isNaN(parsed)) return parsed;
+            }
+          }
+          return 0;
+        }
+      }
+      return isNum ? 0 : '';
+    }
 
-  // ============================================================================
-  // 2. PROCESSAMENTO E AGRUPAMENTO DOS DADOS
-  // ============================================================================
+    // CORREÇÃO DEFINITIVA: Inclui 'Cliente - Código' para separar clientes individuais
+    function getClienteIndividual(d) {
+      let cod = getVal(d, [
+        'Cliente - Código', 'Cliente - Codigo', 'Código Cliente', 'Codigo Cliente', 
+        'Cod. Cliente', 'Cod Cliente', 'Código', 'Codigo', 'Cod', 'CD_CLIENTE', 'COD_CLIENTE'
+      ], false);
 
-  function processarDados(dados) {
-    const agrupado = {};
+      let nome = getVal(d, [
+        'Cliente - Matriz Razão', 'Cliente', 'Razão Social', 'Razao Social', 
+        'Nome Cliente', 'NM_CLIENTE'
+      ], false);
 
-    dados.forEach(linha => {
-      const clienteChave = getClienteIndividual(linha);
+      cod = cod ? String(cod).trim() : '';
+      nome = nome ? String(nome).trim() : '';
 
-      if (!agrupado[clienteChave]) {
-        agrupado[clienteChave] = {
-          cliente: clienteChave,
-          vlMerc2025: 0,
-          vlMerc2026: 0,
-          vol2025: 0,
-          vol2026: 0
-        };
+      if (cod && nome) {
+        if (nome.startsWith(cod)) return nome;
+        return `${cod} - ${nome}`; // Ex: "67927 - CONDOR ATAC"
       }
 
-      // Converte os valores para formato numérico tratando vírgulas se necessário
-      const parseNum = (v) => {
-        if (typeof v === 'number') return v;
-        if (!v) return 0;
-        return parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0;
+      return cod || nome || 'CLIENTE NÃO IDENTIFICADO';
+    }
+
+    function getGrupoEconomico(d) {
+      let grp = getVal(d, ['Grupo Econômico', 'Grupo Economico', 'Grupo Econômico / Rede', 'Grupo', 'Rede'], false);
+      if (!grp) {
+        let nome = getVal(d, ['Cliente - Matriz Razão', 'Nome do cliente', 'NomeCliente', 'Cliente'], false);
+        if (nome) {
+          grp = nome.replace(/^\d+\s*[-_]\s*/, '').trim();
+        } else {
+          grp = 'OUTROS / SEM GRUPO';
+        }
+      }
+
+      const aliasMap = {
+        'COMERCIAL R': 'COMERCIAL ROFE',
+        'DIST ADAUTO': 'DISTAC DISTRIBUIDORA',
+        'CONDOR ATAC': 'CONDOR ATACADISTA',
+        'RAMACON DISTRIBUIDORA DE MATERIAL PARA CONSTRUCAO EIRELI': 'RAMACON DISTRIBUIDORA',
+        'DISTRIBUIDORA MAIA DE MATERIAL DE CONSTRUCAO LTDA': 'NILO MAIA'
       };
 
-      agrupado[clienteChave].vlMerc2025 += parseNum(getVal(linha, ['VL. MERC. 2025', 'Vl Merc 2025', 'Valor 2025'], 0));
-      agrupado[clienteChave].vlMerc2026 += parseNum(getVal(linha, ['VL. MERC. 2026', 'Vl Merc 2026', 'Valor 2026'], 0));
-      agrupado[clienteChave].vol2025 += parseNum(getVal(linha, ['VOL. 2025 (LT)', 'Vol 2025', 'Volume 2025'], 0));
-      agrupado[clienteChave].vol2026 += parseNum(getVal(linha, ['VOL. 2026 (LT)', 'Vol 2026', 'Volume 2026'], 0));
-    });
+      const grpTrim = grp.trim();
+      if (aliasMap[grpTrim]) {
+        return aliasMap[grpTrim];
+      }
 
-    const resultado = Object.values(agrupado).map(item => {
-      const varMerc = item.vlMerc2025 > 0 ? ((item.vlMerc2026 - item.vlMerc2025) / item.vlMerc2025) * 100 : 0;
-      const varVol = item.vol2025 > 0 ? ((item.vol2026 - item.vol2025) / item.vol2025) * 100 : 0;
-      return { ...item, varMerc, varVol };
-    });
+      for (let key in aliasMap) {
+        if (key.toLowerCase() === grpTrim.toLowerCase()) {
+          return aliasMap[key];
+        }
+      }
 
-    // Ordena do maior para o menor valor em 2026
-    return resultado.sort((a, b) => b.vlMerc2026 - a.vlMerc2026);
-  }
-
-  // ============================================================================
-  // 3. RENDERIZAÇÃO NA TELA
-  // ============================================================================
-
-  function renderizarTabela(lista) {
-    const tbody = document.getElementById('tbodyClienteIndividual');
-    document.getElementById('totalClientesInd').innerText = `${lista.length} clientes`;
-
-    if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Nenhum dado encontrado.</td></tr>';
-      return;
+      return grp;
     }
 
-    tbody.innerHTML = lista.map(item => `
-      <tr>
-        <td><strong>${item.cliente}</strong></td>
-        <td class="text-right">${formatMoney(item.vlMerc2025)}</td>
-        <td class="text-right"><strong>${formatMoney(item.vlMerc2026)}</strong></td>
-        <td class="text-right">${formatPercent(item.varMerc)}</td>
-        <td class="text-right">${formatNumber(item.vol2025)}</td>
-        <td class="text-right"><strong>${formatNumber(item.vol2026)}</strong></td>
-        <td class="text-right">${formatPercent(item.varVol)}</td>
-      </tr>
-    `).join('');
-  }
+    // Chaves para Valor de Mercadoria e Volume
+    const mercKeys2026 = ['R$ Mercad 2026', 'Vl Mercadoria Aberto 2026', 'R$ Mercadoria 2026', 'Vl Mercadoria Aberto', 'Vl Mercadoria', 'Valor Mercadoria', 'Valor de Mercadoria', 'R$ Mercadoria'];
+    const mercKeys2025 = ['R$ Mercad 2025', 'Vl Mercadoria Aberto 2025', 'R$ Mercadoria 2025'];
+    const volKeys2026  = ['Qtd (LT) 2026', 'Volume 2026', 'LT 2026', 'Volume LT 2026', 'Qtd LT 2026'];
+    const volKeys2025  = ['Qtd (LT) 2025', 'Volume 2025', 'LT 2025', 'Volume LT 2025', 'Qtd LT 2025'];
 
-  // Listener para leitura do arquivo Excel
-  document.getElementById('fileInput').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    const formatCurrency = val => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+    const formatNumber = val => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(val || 0);
+    const formatPercent = val => {
+      if (!val || !isFinite(val)) return '0,0%';
+      const prefix = val > 0 ? '+' : '';
+      return `${prefix}${val.toFixed(1).replace('.', ',')}%`;
+    };
 
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+    function getVarBadge(val) {
+      if (!val || !isFinite(val) || val === 0) return `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-600">0.0%</span>`;
+      if (val > 0) return `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">+${val.toFixed(1).replace('.', ',')}%</span>`;
+      return `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">${val.toFixed(1).replace('.', ',')}%</span>`;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadFromGitHub();
+      setupEventListeners();
+    });
+
+    async function loadFromGitHub() {
+      const statusEl = document.getElementById('lastUpdateText');
+      const btnRetry = document.getElementById('btnRetryFetch');
+      const manualContainer = document.getElementById('manualUploadContainer');
+
+      statusEl.textContent = '⏳ Carregando dados da planilha...';
+      statusEl.className = 'text-xs text-[#1693a5] font-semibold';
+      btnRetry.classList.add('hidden');
+
+      try {
+        const response = await fetch(GITHUB_RAW_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const arrayBuffer = await response.arrayBuffer();
+        parseExcelBuffer(arrayBuffer);
+        statusEl.textContent = '✅ Dados atualizados com sucesso';
+        statusEl.className = 'text-xs text-emerald-600 font-semibold';
+      } catch (err) {
+        console.error('Erro ao buscar do servidor:', err);
+        statusEl.textContent = '⚠️ Não foi possível carregar o arquivo dados.xls automaticamente.';
+        statusEl.className = 'text-xs text-amber-600 font-semibold';
+        btnRetry.classList.remove('hidden');
+        manualContainer.classList.remove('hidden');
+      }
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        parseExcelBuffer(evt.target.result);
+        document.getElementById('lastUpdateText').textContent = '✅ Arquivo carregado manualmente';
+        document.getElementById('lastUpdateText').className = 'text-xs text-emerald-600 font-semibold';
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function parseExcelBuffer(buffer) {
+      const workbook = XLSX.read(buffer, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      
-      const jsonDados = XLSX.utils.sheet_to_json(worksheet);
-      const dadosProcessados = processarDados(jsonDados);
-      
-      renderizarTabela(dadosProcessados);
-    };
-    reader.readAsArrayBuffer(file);
-  });
-</script>
+      rawData = XLSX.utils.sheet_to_json(worksheet);
+      populateDropdowns();
+      updateDashboard();
+    }
 
-</body>
-</html>
+    function populateDropdowns() {
+      const getUniqueSorted = (fn) => [...new Set(rawData.map(fn).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
+
+      fillSelect('filterGrupo', getUniqueSorted(
