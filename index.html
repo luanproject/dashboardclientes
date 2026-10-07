@@ -49,15 +49,15 @@
             <h1 class="text-2xl font-bold text-black">Dashboard do Cliente</h1>
             <p class="text-xs md:text-sm text-gray-600">Acompanhamento de Valor de Mercadoria, Volume (LT) e Variações por Filial, Linha, Família e Item</p>
             <div class="flex items-center gap-3 mt-1">
-              <p id="lastUpdateText" class="text-xs text-[#1693a5] font-semibold">⏳ Aguarde, carregando dados... ⏳</p>
+              <p id="lastUpdateText" class="text-xs text-[#1693a5] font-semibold">⏳ Aguarde, carregando dados...</p>
               <button id="btnRetryFetch" onclick="loadFromGitHub()" class="hidden text-xs bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded text-gray-700 font-medium">🔄 Tentar Novamente</button>
             </div>
           </div>
         </div>
       </div>
-      <!-- Fallback de Upload Manual -->
-      <div id="manualUploadContainer" class="hidden flex items-center gap-2">
-        <label class="text-xs text-gray-500 font-semibold">Se preferir, selecione o arquivo local:</label>
+      <!-- Upload Manual -->
+      <div id="manualUploadContainer" class="flex items-center gap-2">
+        <label class="text-xs text-gray-600 font-semibold">Carregar Arquivo (.xls / .xlsx):</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls" class="text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#1693a5] file:text-white hover:file:bg-[#0f6875] cursor-pointer"/>
       </div>
     </div>
@@ -106,7 +106,7 @@
           </select>
         </div>
         <div>
-          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Cliente</label>
+          <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">Cliente (Código / Nome)</label>
           <select id="filterCliente" class="w-full border custom-border p-2 rounded-lg text-xs custom-bg-light focus:bg-white outline-none focus:ring-2 focus:ring-[#1693a5]">
             <option value="">Todos os Clientes</option>
           </select>
@@ -125,10 +125,10 @@
       <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border border-l-4 custom-teal-border card-stat">
         <span class="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Valor de Mercadoria 2026</span>
         <div class="flex items-baseline justify-between mt-1">
-          <p id="kpiMerc2026" class="text-2xl font-bold text-black">R\$ 0,00</p>
+          <p id="kpiMerc2026" class="text-2xl font-bold text-black">R$ 0,00</p>
           <span id="kpiVarMerc" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">0%</span>
         </div>
-        <p class="text-[11px] text-gray-500 mt-2">2025: <span id="kpiMerc2025" class="font-medium text-black">R\$ 0,00</span></p>
+        <p class="text-[11px] text-gray-500 mt-2">2025: <span id="kpiMerc2025" class="font-medium text-black">R$ 0,00</span></p>
       </div>
 
       <div class="bg-white p-5 rounded-2xl shadow-sm border custom-border border-l-4 custom-dark-border card-stat">
@@ -234,7 +234,7 @@
       <div class="p-5 border-b custom-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 class="text-base font-bold text-black">🏪 Ranking por Cliente Individual (2026)</h2>
-          <p class="text-xs text-gray-500">Desempenho detalhado ordenado pelo valor de mercadoria</p>
+          <p class="text-xs text-gray-500">Desempenho detalhado por código de cliente individual</p>
         </div>
         <div id="clientesCount" class="text-xs font-semibold text-black custom-bg-light px-3 py-1.5 rounded-lg border custom-border">
           0 clientes
@@ -244,7 +244,7 @@
         <table class="w-full text-left text-xs">
           <thead class="custom-bg-light text-black uppercase tracking-wider text-[11px] font-semibold border-b custom-border">
             <tr>
-              <th class="py-3 px-3">Cliente</th>
+              <th class="py-3 px-3">Cód. / Cliente Individual</th>
               <th class="py-3 px-3 text-right">Vl. Merc. 2025</th>
               <th class="py-3 px-3 text-right">Vl. Merc. 2026</th>
               <th class="py-3 px-3 text-right">% Var Merc.</th>
@@ -361,8 +361,8 @@
     let rawData = [];
     let chartInstances = {};
     
-    // CAMINHO RELATIVO DO ARQUIVO DADOS.XLS DENTRO DO SEU REPOSITÓRIO NO GITHUB
-    const GITHUB_RAW_URL = './dados.xls';
+    // Caminhos de tentativa para carregar automaticamente no servidor/local
+    const FILE_PATHS = ['./dados.xls', './dados.xlsx', 'dados.xls', 'dados.xlsx'];
 
     function normalizeStr(str) {
       if (str === null || str === undefined) return '';
@@ -413,10 +413,33 @@
       return isNum ? 0 : '';
     }
 
+    // Busca o código e nome individual do cliente
+    function getClienteIndividual(d) {
+      let cod = getVal(d, [
+        'Cliente - Código', 'Cliente - Codigo', 'Código Cliente', 'Codigo Cliente', 
+        'Cod. Cliente', 'Cod Cliente', 'Código', 'Codigo', 'Cod', 'CD_CLIENTE', 'COD_CLIENTE'
+      ], false);
+
+      let nome = getVal(d, [
+        'Cliente - Matriz Razão', 'Cliente', 'Razão Social', 'Razao Social', 
+        'Nome Cliente', 'NM_CLIENTE'
+      ], false);
+
+      cod = cod ? String(cod).trim() : '';
+      nome = nome ? String(nome).trim() : '';
+
+      if (cod && nome) {
+        if (nome.startsWith(cod)) return nome;
+        return `${cod} - ${nome}`;
+      }
+
+      return cod || nome || 'CLIENTE NÃO IDENTIFICADO';
+    }
+
     function getGrupoEconomico(d) {
       let grp = getVal(d, ['Grupo Econômico', 'Grupo Economico', 'Grupo Econômico / Rede', 'Grupo', 'Rede'], false);
       if (!grp) {
-        let nome = getVal(d, ['Cliente - Matriz Razão', 'Nome do cliente', 'NomeCliente', 'Cliente', 'Cliente - Nome Abrev - Pedido'], false);
+        let nome = getVal(d, ['Cliente - Matriz Razão', 'Nome do cliente', 'NomeCliente', 'Cliente'], false);
         if (nome) {
           grp = nome.replace(/^\d+\s*[-_]\s*/, '').trim();
         } else {
@@ -446,7 +469,6 @@
       return grp;
     }
 
-    // Chaves para Valor de Mercadoria e Volume
     const mercKeys2026 = ['R$ Mercad 2026', 'Vl Mercadoria Aberto 2026', 'R$ Mercadoria 2026', 'Vl Mercadoria Aberto', 'Vl Mercadoria', 'Valor Mercadoria', 'Valor de Mercadoria', 'R$ Mercadoria'];
     const mercKeys2025 = ['R$ Mercad 2025', 'Vl Mercadoria Aberto 2025', 'R$ Mercadoria 2025'];
     const volKeys2026  = ['Qtd (LT) 2026', 'Volume 2026', 'LT 2026', 'Volume LT 2026', 'Qtd LT 2026'];
@@ -466,7 +488,6 @@
       return `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">${val.toFixed(1).replace('.', ',')}%</span>`;
     }
 
-    // Carregamento do arquivo local via fetch
     window.addEventListener('DOMContentLoaded', () => {
       loadFromGitHub();
       setupEventListeners();
@@ -475,25 +496,33 @@
     async function loadFromGitHub() {
       const statusEl = document.getElementById('lastUpdateText');
       const btnRetry = document.getElementById('btnRetryFetch');
-      const manualContainer = document.getElementById('manualUploadContainer');
 
       statusEl.textContent = '⏳ Carregando dados da planilha...';
       statusEl.className = 'text-xs text-[#1693a5] font-semibold';
       btnRetry.classList.add('hidden');
 
-      try {
-        const response = await fetch(GITHUB_RAW_URL);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const arrayBuffer = await response.arrayBuffer();
-        parseExcelBuffer(arrayBuffer);
-        statusEl.textContent = '✅ Dados atualizados com sucesso';
-        statusEl.className = 'text-xs text-emerald-600 font-semibold';
-      } catch (err) {
-        console.error('Erro ao buscar do servidor:', err);
-        statusEl.textContent = '⚠️ Não foi possível carregar o arquivo dados.xls automaticamente.';
+      let loaded = false;
+
+      for (let path of FILE_PATHS) {
+        try {
+          const response = await fetch(path, { cache: "no-store" });
+          if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            parseExcelBuffer(arrayBuffer);
+            statusEl.textContent = '✅ Dados carregados com sucesso';
+            statusEl.className = 'text-xs text-emerald-600 font-semibold';
+            loaded = true;
+            break;
+          }
+        } catch (e) {
+          console.warn(`Tentativa de carregar ${path} falhou:`, e);
+        }
+      }
+
+      if (!loaded) {
+        statusEl.textContent = '⚠️ Selecione o arquivo Excel no botão ao lado para carregar os dados.';
         statusEl.className = 'text-xs text-amber-600 font-semibold';
         btnRetry.classList.remove('hidden');
-        manualContainer.classList.remove('hidden');
       }
     }
 
@@ -503,19 +532,24 @@
       const reader = new FileReader();
       reader.onload = function(evt) {
         parseExcelBuffer(evt.target.result);
-        document.getElementById('lastUpdateText').textContent = '✅ Arquivo carregado manualmente';
+        document.getElementById('lastUpdateText').textContent = '✅ Arquivo local carregado com sucesso';
         document.getElementById('lastUpdateText').className = 'text-xs text-emerald-600 font-semibold';
       };
       reader.readAsArrayBuffer(file);
     });
 
     function parseExcelBuffer(buffer) {
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      rawData = XLSX.utils.sheet_to_json(worksheet);
-      populateDropdowns();
-      updateDashboard();
+      try {
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        rawData = XLSX.utils.sheet_to_json(worksheet);
+        populateDropdowns();
+        updateDashboard();
+      } catch (err) {
+        console.error("Erro ao processar arquivo Excel:", err);
+        alert("Erro ao ler o arquivo Excel. Verifique se o formato do arquivo é válido.");
+      }
     }
 
     function populateDropdowns() {
@@ -526,7 +560,7 @@
       fillSelect('filterLiquidaPo', getUniqueSorted(d => getVal(d, ['Líquida/Pó', 'Liquida/Po', 'Liquida / Po', 'Tipo'], false)), 'Todas');
       fillSelect('filterLinha', getUniqueSorted(d => getVal(d, ['Linha Comercial', 'Linha'], false)), 'Todas as Linhas');
       fillSelect('filterFamilia', getUniqueSorted(d => getVal(d, ['Família Comercial', 'Familia Comercial', 'Familia'], false)), 'Todas as Famílias');
-      fillSelect('filterCliente', getUniqueSorted(d => getVal(d, ['Cliente - Matriz Razão', 'Cliente', 'Nome do cliente'], false)), 'Todos os Clientes');
+      fillSelect('filterCliente', getUniqueSorted(d => getClienteIndividual(d)), 'Todos os Clientes');
       fillSelect('filterMes', getUniqueSorted(d => getVal(d, ['Mês', 'Mes'], false)), 'Todos os Meses');
     }
 
@@ -575,7 +609,7 @@
         if (liqPo && getVal(d, ['Líquida/Pó', 'Liquida/Po', 'Liquida / Po', 'Tipo'], false) !== liqPo) return false;
         if (linha && getVal(d, ['Linha Comercial', 'Linha'], false) !== linha) return false;
         if (familia && getVal(d, ['Família Comercial', 'Familia Comercial', 'Familia'], false) !== familia) return false;
-        if (cliente && getVal(d, ['Cliente - Matriz Razão', 'Cliente', 'Nome do cliente'], false) !== cliente) return false;
+        if (cliente && getClienteIndividual(d) !== cliente) return false;
         if (mes && getVal(d, ['Mês', 'Mes'], false) !== mes) return false;
 
         return true;
@@ -585,7 +619,6 @@
     function updateDashboard() {
       const data = getFilteredData();
 
-      // Cálculo Totais KPIs
       let totalMerc2026 = 0, totalMerc2025 = 0;
       let totalVol2026 = 0, totalVol2025 = 0;
 
@@ -617,7 +650,6 @@
     }
 
     function renderCharts(data) {
-      // 1. Tinta Líquida vs Pó
       let techMap = {};
       data.forEach(d => {
         let tipo = getVal(d, ['Líquida/Pó', 'Liquida/Po', 'Tipo'], false) || 'Não Informado';
@@ -625,7 +657,6 @@
       });
       createDoughnutChart('chartTecnologia', Object.keys(techMap), Object.values(techMap));
 
-      // 2. Filial
       let filialMap = {};
       data.forEach(d => {
         let f = getVal(d, ['Grupo Empresa', 'Filial', 'Planta'], false) || 'Outros';
@@ -633,7 +664,6 @@
       });
       createBarChart('chartFilial', Object.keys(filialMap), Object.values(filialMap), '#1693a5');
 
-      // 3. Linha Comercial
       let linhaMap = {};
       data.forEach(d => {
         let l = getVal(d, ['Linha Comercial', 'Linha'], false) || 'Outros';
@@ -641,7 +671,6 @@
       });
       createBarChart('chartLinhaComercial', Object.keys(linhaMap), Object.values(linhaMap), '#334155');
 
-      // 4. Top 10 Itens
       let itemMap = {};
       data.forEach(d => {
         let item = getVal(d, ['Item', 'Descrição'], false) || 'Sem Nome';
@@ -652,7 +681,6 @@
       let sortedItens = Object.keys(itemMap).sort((a, b) => itemMap[b].m26 - itemMap[a].m26).slice(0, 10);
       createGroupedBarChart('chartTopItens', sortedItens, sortedItens.map(i => itemMap[i].m25), sortedItens.map(i => itemMap[i].m26));
 
-      // 5. Evolução Mensal
       let mesMap = {};
       data.forEach(d => {
         let m = getVal(d, ['Mês', 'Mes'], false) || 'Outros';
@@ -664,7 +692,6 @@
       let mesKeys = Object.keys(mesMap).sort((a, b) => mesOrdem.indexOf(a.toLowerCase().slice(0,3)) - mesOrdem.indexOf(b.toLowerCase().slice(0,3)));
       createLineChart('chartEvolucao', mesKeys, mesKeys.map(m => mesMap[m].m25), mesKeys.map(m => mesMap[m].m26));
 
-      // 6. Grupo Econômico
       let grupoMap = {};
       data.forEach(d => {
         let g = getGrupoEconomico(d);
@@ -731,7 +758,7 @@
     }
 
     function renderTables(data) {
-      // 1. Tabela Clientes - Grupo
+      // 1. Tabela Clientes - Grupo Econômico
       let grupos = {};
       data.forEach(d => {
         let g = getGrupoEconomico(d);
@@ -761,10 +788,10 @@
       }).join('');
       document.getElementById('tableBodyGrupos').innerHTML = htmlGrupos || '<tr><td colspan="7" class="py-4 text-center text-gray-400">Nenhum dado encontrado</td></tr>';
 
-      // 2. Tabela Clientes Indivíduo
+      // 2. Tabela Clientes Indivíduos (Agrupado rigorosamente por Código + Nome Individual)
       let clientes = {};
       data.forEach(d => {
-        let c = getVal(d, ['Cliente - Matriz Razão', 'Cliente', 'Nome do cliente'], false) || 'Não Identificado';
+        let c = getClienteIndividual(d);
         if (!clientes[c]) clientes[c] = { m25: 0, m26: 0, v25: 0, v26: 0 };
         clientes[c].m25 += getVal(d, mercKeys2025);
         clientes[c].m26 += getVal(d, mercKeys2026);
@@ -775,7 +802,7 @@
       let sortedClientes = Object.keys(clientes).sort((a, b) => clientes[b].m26 - clientes[a].m26);
       document.getElementById('clientesCount').textContent = `${sortedClientes.length} clientes`;
 
-      let htmlClientes = sortedClientes.slice(0, 50).map(c => {
+      let htmlClientes = sortedClientes.map(c => {
         let item = clientes[c];
         let varM = item.m25 > 0 ? ((item.m26 - item.m25) / item.m25) * 100 : 0;
         let varV = item.v25 > 0 ? ((item.v26 - item.v25) / item.v25) * 100 : 0;
